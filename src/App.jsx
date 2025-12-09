@@ -43,12 +43,25 @@ function Starfield({ count = 2200, radius = 160 }) {
 }
 
 function Planet({ name, textureUrl, position, scale = 1, emissive }) {
+  const meshRef = useRef();
   const texture = useLoader(THREE.TextureLoader, textureUrl);
+  texture.encoding = THREE.sRGBEncoding;
+  texture.anisotropy = 8;
+
+  useFrame(() => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y += 0.0014;
+    }
+  });
+
   return (
-    <mesh name={name} position={position} scale={scale} castShadow receiveShadow>
+    <mesh ref={meshRef} name={name} position={position} scale={scale} castShadow receiveShadow>
       <sphereGeometry args={[2.5, 64, 64]} />
       <meshStandardMaterial
         map={texture}
+        roughness={0.85}
+        metalness={0.08}
+        envMapIntensity={0.4}
         emissive={emissive || '#000000'}
         emissiveIntensity={emissive ? 1.5 : 0}
       />
@@ -195,8 +208,10 @@ function Scene({ sections }) {
   return (
     <>
       <color attach="background" args={['#020611']} />
-      <ambientLight intensity={0.22} />
-      <pointLight ref={lightRef} position={[5, 5, 5]} intensity={1.8} castShadow />
+      <ambientLight intensity={0.25} />
+      <hemisphereLight args={['#7aa2ff', '#0b0f1c', 0.35]} />
+      <directionalLight position={[-14, 10, 12]} intensity={1.1} castShadow />
+      <pointLight ref={lightRef} position={[5, 5, 5]} intensity={2.2} decay={2} distance={120} castShadow />
       <Starfield />
       {planets.map((p) => (
         <group key={p.name} position={p.position}>
@@ -221,7 +236,16 @@ function App() {
   return (
     <div className="page">
       <div className="canvas-wrap">
-        <Canvas shadows>
+        <Canvas
+          shadows
+          dpr={[1, 2]}
+          gl={{
+            antialias: true,
+            outputEncoding: THREE.sRGBEncoding,
+            toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 1.05,
+          }}
+        >
           <PerspectiveCamera makeDefault fov={55} near={0.1} far={200} />
           <Suspense fallback={null}>
             <Scene sections={sectionsRef} />
