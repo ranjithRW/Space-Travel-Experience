@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useRef } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, OrbitControls } from '@react-three/drei';
@@ -84,10 +84,11 @@ function Ring({ radius = 4.5, thickness = 1, textureUrl }) {
   return <mesh geometry={geometry} material={material} rotation={[Math.PI / 2.2, 0, Math.PI / 6]} />;
 }
 
-function Scene({ sections }) {
+function Scene({ sections, isTopView }) {
   const { camera, scene } = useThree();
   const lightRef = useRef();
   const orbitRefs = useRef([]);
+  const timelineRef = useRef(null);
   const planets = useMemo(
     () => [
       {
@@ -223,6 +224,7 @@ function Scene({ sections }) {
         i
       );
     });
+    timelineRef.current = tl;
 
     return () => {
       tl.kill();
@@ -230,12 +232,33 @@ function Scene({ sections }) {
     };
   }, [camera, scene, sections, planets]);
 
+  useEffect(() => {
+    const triggers = ScrollTrigger.getAll();
+    if (isTopView) {
+      triggers.forEach((st) => st.disable());
+    } else {
+      triggers.forEach((st) => st.enable());
+      if (timelineRef.current) {
+        timelineRef.current.play(); // ensure timeline resumes
+      }
+    }
+  }, [isTopView]);
+
   useFrame((_, delta) => {
     orbitRefs.current.forEach((group, i) => {
       if (group && planets[i]?.orbitSpeed) {
         group.rotation.y += planets[i].orbitSpeed * delta;
       }
     });
+
+    if (isTopView) {
+      camera.position.set(0, 80, 0.01);
+      camera.lookAt(0, 0, 0);
+      if (lightRef.current) {
+        lightRef.current.position.copy(camera.position);
+      }
+      return;
+    }
 
     if (lightRef.current) {
       lightRef.current.position.copy(camera.position);
@@ -275,9 +298,35 @@ function Scene({ sections }) {
 
 function App() {
   const sectionsRef = useRef(null);
+  const [isTopView, setIsTopView] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = isTopView ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isTopView]);
 
   return (
     <div className="page">
+      <button
+        type="button"
+        onClick={() => setIsTopView((prev) => !prev)}
+        style={{
+          position: 'fixed',
+          top: '16px',
+          right: '16px',
+          zIndex: 10,
+          padding: '10px 14px',
+          background: '#0f172a',
+          color: '#e2e8f0',
+          border: '1px solid #334155',
+          borderRadius: '8px',
+          cursor: 'pointer',
+        }}
+      >
+        {isTopView ? 'Original View' : 'Top View'}
+      </button>
       <div className="canvas-wrap">
         <Canvas
           shadows
@@ -291,7 +340,7 @@ function App() {
         >
           <PerspectiveCamera makeDefault fov={55} near={0.1} far={200} />
           <Suspense fallback={null}>
-            <Scene sections={sectionsRef} />
+            <Scene sections={sectionsRef} isTopView={isTopView} />
           </Suspense>
         </Canvas>
       </div>
