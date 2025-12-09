@@ -229,24 +229,7 @@ function App() {
         </Canvas>
       </div>
 
-      <div ref={sectionsRef} className="sections">
-        <section className="panel">
-          <h1>Space Travel Experience</h1>
-          <p>Scroll to glide through our planetary fly-by.</p>
-        </section>
-        <section className="panel">
-          <h2>Glide past Earth</h2>
-          <p>Watch the blue marble fill your viewport as you approach orbit.</p>
-        </section>
-        <section className="panel">
-          <h2>Skim over Mars</h2>
-          <p>Burnished reds and canyons stretch beneath your path.</p>
-        </section>
-        <section className="panel">
-          <h2>Drift by Jupiter</h2>
-          <p>Storm bands tower while you cruise the gas giant’s horizon.</p>
-        </section>
-      </div>
+      <div ref={sectionsRef} className="sections" aria-hidden />
     </div>
   );
 }
