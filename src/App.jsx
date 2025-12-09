@@ -42,6 +42,22 @@ function Starfield({ count = 2200, radius = 160 }) {
   );
 }
 
+function OrbitPath({ radius }) {
+  const geometry = useMemo(() => new THREE.RingGeometry(radius - 0.08, radius + 0.08, 128), [radius]);
+  const material = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: '#4c556e',
+        transparent: true,
+        opacity: 0.45,
+        side: THREE.DoubleSide,
+      }),
+    []
+  );
+
+  return <mesh geometry={geometry} material={material} rotation={[Math.PI / 2, 0, 0]} />;
+}
+
 function Planet({ name, textureUrl, position, scale = 1, emissive }) {
   const meshRef = useRef();
   const texture = useLoader(THREE.TextureLoader, textureUrl);
@@ -87,62 +103,99 @@ function Ring({ radius = 4.5, thickness = 1, textureUrl }) {
 function Scene({ sections }) {
   const { camera, scene } = useThree();
   const lightRef = useRef();
+  const orbitRefs = useRef([]);
   const planets = useMemo(
     () => [
       {
         name: 'sun',
-        position: [0, 0, 0],
-        scale: 2.5,
+        orbitRadius: 0,
+        startAngle: 0,
+        orbitSpeed: 0,
+        tilt: 0,
+        yOffset: 0,
+        scale: 2.8,
         textureUrl: '/textures/sun.jpg',
         emissive: '#ff9a00',
       },
       {
         name: 'mercury',
-        position: [6, 0.4, -6],
-        scale: 0.4,
+        orbitRadius: 8,
+        startAngle: 0.4,
+        orbitSpeed: 0.9,
+        tilt: 0.01,
+        yOffset: 0.2,
+        scale: 0.45,
         textureUrl: '/textures/mercury.jpg',
       },
       {
         name: 'venus',
-        position: [10, -0.3, -10],
-        scale: 0.95,
+        orbitRadius: 12,
+        startAngle: 2.2,
+        orbitSpeed: 0.7,
+        tilt: 0.03,
+        yOffset: -0.1,
+        scale: 0.9,
         textureUrl: '/textures/venus.jpg',
       },
       {
         name: 'earth',
-        position: [15, 0.5, -15],
+        orbitRadius: 16,
+        startAngle: 1.2,
+        orbitSpeed: 0.6,
+        tilt: 0.04,
+        yOffset: 0.25,
         scale: 1,
         textureUrl: '/textures/earth.jpg',
       },
       {
         name: 'mars',
-        position: [20, -0.2, -20],
-        scale: 0.75,
+        orbitRadius: 20,
+        startAngle: 0.9,
+        orbitSpeed: 0.5,
+        tilt: 0.02,
+        yOffset: -0.15,
+        scale: 0.78,
         textureUrl: '/textures/mars.jpg',
       },
       {
         name: 'jupiter',
-        position: [28, 1.4, -26],
+        orbitRadius: 28,
+        startAngle: 2.7,
+        orbitSpeed: 0.35,
+        tilt: 0.012,
+        yOffset: 0.5,
         scale: 2.2,
         textureUrl: '/textures/jupiter.jpg',
       },
       {
         name: 'saturn',
-        position: [36, 1, -32],
-        scale: 1.9,
+        orbitRadius: 36,
+        startAngle: 1.6,
+        orbitSpeed: 0.3,
+        tilt: 0.05,
+        yOffset: 0.4,
+        scale: 1.85,
         textureUrl: '/textures/saturn.jpg',
         hasRing: true,
       },
       {
         name: 'uranus',
-        position: [44, 0.6, -38],
-        scale: 1.4,
+        orbitRadius: 44,
+        startAngle: 2.8,
+        orbitSpeed: 0.24,
+        tilt: 0.08,
+        yOffset: 0.35,
+        scale: 1.42,
         textureUrl: '/textures/uranus.jpg',
       },
       {
         name: 'neptune',
-        position: [52, 0.4, -44],
-        scale: 1.35,
+        orbitRadius: 52,
+        startAngle: 0.3,
+        orbitSpeed: 0.18,
+        tilt: 0.12,
+        yOffset: 0.28,
+        scale: 1.32,
         textureUrl: '/textures/neptune.jpg',
       },
     ],
@@ -165,17 +218,11 @@ function Scene({ sections }) {
       },
     });
 
-    const stops = [
-      { look: [0, 0, 0], pos: [4, 2, 12], dur: 1 }, // sun
-      { look: [6, 0.4, -6], pos: [10, 2.5, -2], dur: 1 },
-      { look: [10, -0.3, -10], pos: [14, 2.3, -6], dur: 1 },
-      { look: [15, 0.5, -15], pos: [18, 2, -10], dur: 1 },
-      { look: [20, -0.2, -20], pos: [23, 1.8, -14], dur: 1 },
-      { look: [28, 1.4, -26], pos: [30, 2.6, -18], dur: 1 },
-      { look: [36, 1, -32], pos: [38, 2.4, -24], dur: 1 },
-      { look: [44, 0.6, -38], pos: [46, 2.2, -28], dur: 1 },
-      { look: [52, 0.4, -44], pos: [54, 2.1, -32], dur: 1 },
-    ];
+    const stops = planets.map((p, idx) => {
+      const look = [p.orbitRadius, p.yOffset, 0];
+      const pos = [p.orbitRadius + 3, p.yOffset + 2, idx < 2 ? 10 - idx * 4 : -6];
+      return { look, pos, dur: 1 };
+    });
 
     stops.forEach((step, i) => {
       tl.to(
@@ -199,7 +246,13 @@ function Scene({ sections }) {
     };
   }, [camera, scene, sections, planets]);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
+    orbitRefs.current.forEach((group, i) => {
+      if (group && planets[i]?.orbitSpeed) {
+        group.rotation.y += planets[i].orbitSpeed * delta;
+      }
+    });
+
     if (lightRef.current) {
       lightRef.current.position.copy(camera.position);
     }
@@ -213,12 +266,19 @@ function Scene({ sections }) {
       <directionalLight position={[-14, 10, 12]} intensity={1.1} castShadow />
       <pointLight ref={lightRef} position={[5, 5, 5]} intensity={2.2} decay={2} distance={120} castShadow />
       <Starfield />
-      {planets.map((p) => (
-        <group key={p.name} position={p.position}>
+      {planets.map((p, idx) => (
+        <group
+          key={p.name}
+          ref={(node) => {
+            orbitRefs.current[idx] = node;
+          }}
+          rotation={[p.tilt, p.startAngle, 0]}
+        >
+          {p.orbitRadius > 0 ? <OrbitPath radius={p.orbitRadius} /> : null}
           <Planet
             name={p.name}
             textureUrl={p.textureUrl}
-            position={[0, 0, 0]}
+            position={[p.orbitRadius, p.yOffset, 0]}
             scale={p.scale}
             emissive={p.emissive}
           />
