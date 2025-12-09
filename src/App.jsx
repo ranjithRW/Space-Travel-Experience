@@ -42,22 +42,6 @@ function Starfield({ count = 2200, radius = 160 }) {
   );
 }
 
-function OrbitPath({ radius }) {
-  const geometry = useMemo(() => new THREE.RingGeometry(radius - 0.08, radius + 0.08, 128), [radius]);
-  const material = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color: '#4c556e',
-        transparent: true,
-        opacity: 0.45,
-        side: THREE.DoubleSide,
-      }),
-    []
-  );
-
-  return <mesh geometry={geometry} material={material} rotation={[Math.PI / 2, 0, 0]} />;
-}
-
 function Planet({ name, textureUrl, position, scale = 1, emissive }) {
   const meshRef = useRef();
   const texture = useLoader(THREE.TextureLoader, textureUrl);
@@ -274,7 +258,6 @@ function Scene({ sections }) {
           }}
           rotation={[p.tilt, p.startAngle, 0]}
         >
-          {p.orbitRadius > 0 ? <OrbitPath radius={p.orbitRadius} /> : null}
           <Planet
             name={p.name}
             textureUrl={p.textureUrl}
