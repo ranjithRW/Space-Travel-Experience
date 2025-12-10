@@ -49,7 +49,7 @@ function Starfield({ count = 2400, radius = 220, band = false }) {
       blending: THREE.AdditiveBlending,
       uniforms: {
         uTime: { value: 0 },
-        uPixelRatio: { value: typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1 },
+        uPixelRatio: { value: typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 1.5) : 1 },
       },
       vertexShader: `
         attribute float aSize;
@@ -61,7 +61,7 @@ function Starfield({ count = 2400, radius = 220, band = false }) {
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           float twinkle = 0.82 + 0.18 * sin(uTime * 2.6 + aTwinkle);
-          gl_PointSize = aSize * uPixelRatio * (140.0 / -mvPosition.z);
+          gl_PointSize = aSize * uPixelRatio * (120.0 / -mvPosition.z);
           vOpacity = aOpacity * twinkle;
           gl_Position = projectionMatrix * mvPosition;
         }
@@ -347,8 +347,8 @@ function Scene({ sections }) {
       <hemisphereLight args={['#7aa2ff', '#0b0f1c', 0.35]} />
       <directionalLight position={[-14, 10, 12]} intensity={1.1} castShadow />
       <pointLight ref={lightRef} position={[5, 5, 5]} intensity={2.2} decay={2} distance={120} castShadow />
-      <Starfield count={3780} radius={260} />
-      <Starfield count={2520} radius={240} band />
+      <Starfield count={2000} radius={260} />
+      <Starfield count={1500} radius={240} band />
       {planets.map((p, idx) => (
         <group
           key={p.name}
