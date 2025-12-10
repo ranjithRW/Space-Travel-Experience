@@ -139,20 +139,6 @@ function Planet({ name, textureUrl, position, scale = 1, emissive }) {
   );
 }
 
-function Ring({ radius = 4.5, thickness = 1, textureUrl }) {
-  const geometry = useMemo(() => new THREE.RingGeometry(radius - thickness, radius + thickness, 128), [radius, thickness]);
-  const texture = useLoader(THREE.TextureLoader, textureUrl);
-  const material = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        map: texture,
-        side: THREE.DoubleSide,
-        transparent: true,
-      }),
-    [texture]
-  );
-  return <mesh geometry={geometry} material={material} rotation={[Math.PI / 2.2, 0, Math.PI / 6]} />;
-}
 
 function Scene({ sections }) {
   const { camera, scene, gl } = useThree();
@@ -230,7 +216,6 @@ function Scene({ sections }) {
         yOffset: 0.4,
         scale: 1.85,
         textureUrl: '/textures/saturn.jpg',
-        hasRing: true,
       },
       {
         name: 'uranus',
@@ -379,7 +364,6 @@ function Scene({ sections }) {
             scale={p.scale}
             emissive={p.emissive}
           />
-          {p.hasRing ? <Ring radius={4.5} thickness={0.8} textureUrl="/textures/saturnRing.png" /> : null}
         </group>
       ))}
       <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
