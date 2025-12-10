@@ -57,14 +57,26 @@ function Planet({ name, textureUrl, position, scale = 1, emissive }) {
   return (
     <mesh ref={meshRef} name={name} position={position} scale={scale} castShadow receiveShadow>
       <sphereGeometry args={[2.5, 64, 64]} />
-      <meshStandardMaterial
-        map={texture}
-        roughness={0.85}
-        metalness={0.08}
-        envMapIntensity={0.4}
-        emissive={emissive || '#000000'}
-        emissiveIntensity={emissive ? 1.5 : 0}
-      />
+      {name === 'sun' ? (
+        <meshStandardMaterial
+          map={texture}
+          emissiveMap={texture}
+          emissive="#ff9a00"
+          emissiveIntensity={1.25}
+          roughness={0.55}
+          metalness={0.1}
+          envMapIntensity={0.2}
+        />
+      ) : (
+        <meshStandardMaterial
+          map={texture}
+          roughness={0.85}
+          metalness={0.08}
+          envMapIntensity={0.4}
+          emissive={emissive || '#000000'}
+          emissiveIntensity={emissive ? 1.5 : 0}
+        />
+      )}
     </mesh>
   );
 }
