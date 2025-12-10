@@ -246,12 +246,12 @@ function Scene({ sections }) {
     camera.lookAt(0, 0, 0);
 
     const tl = gsap.timeline({
-      defaults: { ease: 'power2.inOut' },
+      defaults: { ease: 'none' },
       scrollTrigger: {
         trigger: sections.current,
         start: 'top top',
         end: '+=7000',
-        scrub: 1.1,
+        scrub: 1,
         pin: true,
         anticipatePin: 1,
       },
@@ -260,65 +260,52 @@ function Scene({ sections }) {
     const stops = planets.map((p, idx) => {
       const look = [p.orbitRadius, p.yOffset, 0];
       const pos = [p.orbitRadius + 3, p.yOffset + 2, idx < 2 ? 10 - idx * 4 : -6];
-      const zPunch = pos[2] - 1.6;
-      return { look, pos, zPunch, dur: 1 };
+      return { look, pos, dur: 1 };
     });
 
     const fovTargets = planets.map((_, idx) => THREE.MathUtils.lerp(46, 62, idx / (planets.length - 1)));
     const exposureTargets = planets.map((_, idx) => THREE.MathUtils.lerp(1.04, 1.24, idx / (planets.length - 1)));
 
     stops.forEach((step, i) => {
+      const startTime = i * step.dur;
       tl.to(
         camera.position,
-        { x: step.pos[0], y: step.pos[1], duration: step.dur, ease: 'power3.inOut' },
-        i
-      );
-      tl.to(
-        camera.position,
-        { z: step.zPunch, duration: step.dur * 0.32, ease: 'power3.in' },
-        i
-      );
-      tl.to(
-        camera.position,
-        { z: step.pos[2], duration: step.dur * 0.68, ease: 'power2.out' },
-        i + step.dur * 0.18
+        { 
+          x: step.pos[0], 
+          y: step.pos[1], 
+          z: step.pos[2],
+          duration: step.dur, 
+          ease: 'none' 
+        },
+        startTime
       );
       tl.to(
         {},
         {
           duration: step.dur,
           onUpdate: () => camera.lookAt(...step.look),
+          ease: 'none'
         },
-        i
-      );
-      tl.to(
-        camera,
-        {
-          fov: fovTargets[i] * 0.94,
-          duration: step.dur * 0.4,
-          ease: 'power3.inOut',
-          onUpdate: () => camera.updateProjectionMatrix(),
-        },
-        i
+        startTime
       );
       tl.to(
         camera,
         {
           fov: fovTargets[i],
-          duration: step.dur * 0.6,
-          ease: 'power2.out',
+          duration: step.dur,
+          ease: 'none',
           onUpdate: () => camera.updateProjectionMatrix(),
         },
-        i + step.dur * 0.2
+        startTime
       );
       tl.to(
         gl,
         {
           toneMappingExposure: exposureTargets[i],
           duration: step.dur,
-          ease: 'power2.inOut',
+          ease: 'none',
         },
-        i
+        startTime
       );
     });
 
