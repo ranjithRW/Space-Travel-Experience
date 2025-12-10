@@ -7,37 +7,95 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
-function Starfield({ count = 2200, radius = 160 }) {
-  const positions = useMemo(() => {
-    const arr = new Float32Array(count * 3);
+function Starfield({ count = 2400, radius = 220, band = false }) {
+  const geometryRef = useRef();
+  const materialRef = useRef();
+
+  const { positions, sizes, twinkles, opacities } = useMemo(() => {
+    const posArr = new Float32Array(count * 3);
+    const sizeArr = new Float32Array(count);
+    const twinkleArr = new Float32Array(count);
+    const opacityArr = new Float32Array(count);
+
     for (let i = 0; i < count; i += 1) {
       const phi = Math.acos(THREE.MathUtils.randFloatSpread(2));
       const theta = THREE.MathUtils.randFloatSpread(2) * Math.PI;
-      const r = radius * Math.cbrt(Math.random());
-      arr[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      arr[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      arr[i * 3 + 2] = r * Math.cos(phi);
+      const radialBias = band ? Math.pow(Math.abs(Math.sin(theta)), 0.35) : 1;
+      const r = radius * radialBias * Math.cbrt(Math.random());
+
+      const x = r * Math.sin(phi) * Math.cos(theta);
+      const yBase = r * Math.sin(phi) * Math.sin(theta);
+      const z = r * Math.cos(phi);
+
+      const y = band ? yBase * 0.32 + THREE.MathUtils.randFloatSpread(3) : yBase;
+
+      posArr[i * 3] = x;
+      posArr[i * 3 + 1] = y;
+      posArr[i * 3 + 2] = z;
+
+      const sizeBoost = band ? 1.25 : 1;
+      sizeArr[i] = THREE.MathUtils.lerp(5, 20, Math.random() ** 2) * sizeBoost;
+      twinkleArr[i] = Math.random() * Math.PI * 2;
+      opacityArr[i] = THREE.MathUtils.lerp(0.28, 0.95, Math.random() ** 1.6) * (band ? 1.05 : 1);
     }
-    return arr;
-  }, [count, radius]);
+
+    return { positions: posArr, sizes: sizeArr, twinkles: twinkleArr, opacities: opacityArr };
+  }, [band, count, radius]);
+
+  const material = useMemo(() => {
+    const mat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0 },
+        uPixelRatio: { value: typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1 },
+      },
+      vertexShader: `
+        attribute float aSize;
+        attribute float aTwinkle;
+        attribute float aOpacity;
+        uniform float uTime;
+        uniform float uPixelRatio;
+        varying float vOpacity;
+        void main() {
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          float twinkle = 0.6 + 0.4 * sin(uTime * 2.8 + aTwinkle);
+          gl_PointSize = aSize * uPixelRatio * (180.0 / -mvPosition.z);
+          vOpacity = aOpacity * twinkle;
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        varying float vOpacity;
+        void main() {
+          float d = length(gl_PointCoord - 0.5);
+          float alpha = smoothstep(0.5, 0.15, d) * vOpacity;
+          vec3 color = vec3(0.82, 0.88, 1.0);
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
+    });
+    return mat;
+  }, []);
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  useFrame(({ clock }) => {
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime.value = clock.elapsedTime;
+    }
+  });
 
   return (
-    <points frustumCulled={false}>
+    <points ref={geometryRef} frustumCulled={false}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={positions.length / 3}
-          array={positions}
-          itemSize={3}
-        />
+        <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-aSize" count={sizes.length} array={sizes} itemSize={1} />
+        <bufferAttribute attach="attributes-aTwinkle" count={twinkles.length} array={twinkles} itemSize={1} />
+        <bufferAttribute attach="attributes-aOpacity" count={opacities.length} array={opacities} itemSize={1} />
       </bufferGeometry>
-      <pointsMaterial
-        size={0.6}
-        sizeAttenuation
-        color="#e8eefc"
-        transparent
-        opacity={0.85}
-      />
+      <primitive ref={materialRef} object={material} attach="material" />
     </points>
   );
 }
@@ -261,7 +319,8 @@ function Scene({ sections }) {
       <hemisphereLight args={['#7aa2ff', '#0b0f1c', 0.35]} />
       <directionalLight position={[-14, 10, 12]} intensity={1.1} castShadow />
       <pointLight ref={lightRef} position={[5, 5, 5]} intensity={2.2} decay={2} distance={120} castShadow />
-      <Starfield />
+      <Starfield count={4200} radius={260} />
+      <Starfield count={2800} radius={240} band />
       {planets.map((p, idx) => (
         <group
           key={p.name}
