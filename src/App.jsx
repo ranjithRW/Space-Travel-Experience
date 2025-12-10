@@ -33,10 +33,10 @@ function Starfield({ count = 2400, radius = 220, band = false }) {
       posArr[i * 3 + 1] = y;
       posArr[i * 3 + 2] = z;
 
-      const sizeBoost = band ? 1.25 : 1;
-      sizeArr[i] = THREE.MathUtils.lerp(5, 20, Math.random() ** 2) * sizeBoost;
+      const sizeBoost = band ? 1.1 : 1;
+      sizeArr[i] = THREE.MathUtils.lerp(4, 14, Math.random() ** 2) * sizeBoost;
       twinkleArr[i] = Math.random() * Math.PI * 2;
-      opacityArr[i] = THREE.MathUtils.lerp(0.28, 0.95, Math.random() ** 1.6) * (band ? 1.05 : 1);
+      opacityArr[i] = THREE.MathUtils.lerp(0.24, 0.7, Math.random() ** 1.6) * (band ? 1.05 : 1);
     }
 
     return { positions: posArr, sizes: sizeArr, twinkles: twinkleArr, opacities: opacityArr };
@@ -60,8 +60,8 @@ function Starfield({ count = 2400, radius = 220, band = false }) {
         varying float vOpacity;
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          float twinkle = 0.6 + 0.4 * sin(uTime * 2.8 + aTwinkle);
-          gl_PointSize = aSize * uPixelRatio * (180.0 / -mvPosition.z);
+          float twinkle = 0.82 + 0.18 * sin(uTime * 2.6 + aTwinkle);
+          gl_PointSize = aSize * uPixelRatio * (140.0 / -mvPosition.z);
           vOpacity = aOpacity * twinkle;
           gl_Position = projectionMatrix * mvPosition;
         }
@@ -70,7 +70,7 @@ function Starfield({ count = 2400, radius = 220, band = false }) {
         varying float vOpacity;
         void main() {
           float d = length(gl_PointCoord - 0.5);
-          float alpha = smoothstep(0.5, 0.15, d) * vOpacity;
+          float alpha = smoothstep(0.46, 0.18, d) * vOpacity;
           vec3 color = vec3(0.82, 0.88, 1.0);
           gl_FragColor = vec4(color, alpha);
         }
@@ -155,7 +155,7 @@ function Ring({ radius = 4.5, thickness = 1, textureUrl }) {
 }
 
 function Scene({ sections }) {
-  const { camera, scene } = useThree();
+  const { camera, scene, gl } = useThree();
   const lightRef = useRef();
   const orbitRefs = useRef([]);
   const planets = useMemo(
@@ -266,7 +266,7 @@ function Scene({ sections }) {
         trigger: sections.current,
         start: 'top top',
         end: '+=7000',
-        scrub: true,
+        scrub: 1.1,
         pin: true,
         anticipatePin: 1,
       },
@@ -275,20 +275,63 @@ function Scene({ sections }) {
     const stops = planets.map((p, idx) => {
       const look = [p.orbitRadius, p.yOffset, 0];
       const pos = [p.orbitRadius + 3, p.yOffset + 2, idx < 2 ? 10 - idx * 4 : -6];
-      return { look, pos, dur: 1 };
+      const zPunch = pos[2] - 1.6;
+      return { look, pos, zPunch, dur: 1 };
     });
+
+    const fovTargets = planets.map((_, idx) => THREE.MathUtils.lerp(46, 62, idx / (planets.length - 1)));
+    const exposureTargets = planets.map((_, idx) => THREE.MathUtils.lerp(1.04, 1.24, idx / (planets.length - 1)));
 
     stops.forEach((step, i) => {
       tl.to(
         camera.position,
-        { x: step.pos[0], y: step.pos[1], z: step.pos[2], duration: step.dur },
+        { x: step.pos[0], y: step.pos[1], duration: step.dur, ease: 'power3.inOut' },
         i
+      );
+      tl.to(
+        camera.position,
+        { z: step.zPunch, duration: step.dur * 0.32, ease: 'power3.in' },
+        i
+      );
+      tl.to(
+        camera.position,
+        { z: step.pos[2], duration: step.dur * 0.68, ease: 'power2.out' },
+        i + step.dur * 0.18
       );
       tl.to(
         {},
         {
           duration: step.dur,
           onUpdate: () => camera.lookAt(...step.look),
+        },
+        i
+      );
+      tl.to(
+        camera,
+        {
+          fov: fovTargets[i] * 0.94,
+          duration: step.dur * 0.4,
+          ease: 'power3.inOut',
+          onUpdate: () => camera.updateProjectionMatrix(),
+        },
+        i
+      );
+      tl.to(
+        camera,
+        {
+          fov: fovTargets[i],
+          duration: step.dur * 0.6,
+          ease: 'power2.out',
+          onUpdate: () => camera.updateProjectionMatrix(),
+        },
+        i + step.dur * 0.2
+      );
+      tl.to(
+        gl,
+        {
+          toneMappingExposure: exposureTargets[i],
+          duration: step.dur,
+          ease: 'power2.inOut',
         },
         i
       );
@@ -319,8 +362,8 @@ function Scene({ sections }) {
       <hemisphereLight args={['#7aa2ff', '#0b0f1c', 0.35]} />
       <directionalLight position={[-14, 10, 12]} intensity={1.1} castShadow />
       <pointLight ref={lightRef} position={[5, 5, 5]} intensity={2.2} decay={2} distance={120} castShadow />
-      <Starfield count={4200} radius={260} />
-      <Starfield count={2800} radius={240} band />
+      <Starfield count={3780} radius={260} />
+      <Starfield count={2520} radius={240} band />
       {planets.map((p, idx) => (
         <group
           key={p.name}
